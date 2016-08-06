@@ -1,0 +1,38 @@
+# START -- DOMAIN / DIRECTADMIN / LETSENCRYPT SETTINGS
+DIRECTADMIN_PROTOCOL = http
+DIRECTADMIN_DOMAIN = 123.456.789.101
+DIRECTADMIN_PORT = 2222
+DIRECTADMIN_USER = user
+DIRECTADMIN_PASSWORD = pass
+SITE_DOMAIN = www.example.com
+LETSENCRYPT_EMAIL = hello@example.com
+# END -- DOMAIN / DIRECTADMIN / LETSENCRYPT SETTINGS
+
+PWD := $(shell pwd)
+mkdir=mkdir -p
+DATADIRS=./data/etc ./data/log
+
+usage:
+	@echo "1. Update the copied Makefile with your directadmin/domain configuration."
+	@echo "2. RUN: make create-container"
+	@echo "3. RUN: make update-cert"
+
+create-container: data_dirs
+	docker build -t letsencrypt-directadmin .
+	docker create --name letsencrypt-directadmin letsencrypt-directadmin
+
+update-cert:
+	docker run -v $(PWD)/data/etc:/etc/letsencrypt -v $(PWD)/data/log:/var/log/letsencrypt letsencrypt-directadmin letsencrypt --configurator letsencrypt-directadmin:directadmin --letsencrypt-directadmin:directadmin-server $(DIRECTADMIN_PROTOCOL)://$(DIRECTADMIN_USER):$(DIRECTADMIN_PASSWORD)@$(DIRECTADMIN_DOMAIN):$(DIRECTADMIN_PORT)/ -d $(SITE_DOMAIN) --email $(LETSENCRYPT_EMAIL) --agree-tos --non-interactive
+
+cleanup:
+	docker rm letsencrypt-directadmin
+	docker rmi letsencrypt-directadmin
+
+data_dirs:
+	$(mkdir) $(DATADIRS)
+
+.PHONY: usage \
+	create-container \
+	update-cert \
+	data_dirs \
+	cleanup
